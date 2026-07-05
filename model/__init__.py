@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 # importando os elementos definidos no modelo
 from model.base import Base
 from model.configuracao import ConfiguracaoEstacionamento
+from model.vaga import Vaga
 
 
 # url de acesso ao banco (essa é uma url de acesso ao sqlite local)
