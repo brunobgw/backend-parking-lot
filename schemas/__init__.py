@@ -1,3 +1,2 @@
-from schemas.produto import ProdutoSchema, ProdutoBuscaSchema
-from schemas.comentario import ComentarioSchema
+from schemas.configuracao import ConfiguracaoEstacionamentoSchema, apresenta_configuracao
 from schemas.error import ErrorSchema
