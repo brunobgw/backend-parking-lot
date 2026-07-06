@@ -60,13 +60,15 @@ no navegador. A documentação interativa (Swagger) fica disponível em
 
 ### Configuração do estacionamento
 
-| Método | Rota            | Descrição                                        |
-|--------|-----------------|--------------------------------------------------|
-| GET    | `/configuracao` | Retorna a configuração cadastrada                |
-| POST   | `/configuracao` | Cadastra a configuração (única) e gera as vagas  |
-| PUT    | `/configuracao` | Atualiza a configuração e ajusta as vagas        |
+| Método | Rota            | Descrição                                                                 |
+|--------|-----------------|---------------------------------------------------------------------------|
+| GET    | `/configuracao` | Retorna a configuração cadastrada                                         |
+| POST   | `/configuracao` | Cadastra a configuração (única) e gera as vagas                           |
+| PUT    | `/configuracao` | Atualiza a configuração e ajusta as vagas                                 |
+| PATCH  | `/configuracao` | Atualiza parcialmente a configuração (e as vagas, se a capacidade mudar)  |
+| DELETE | `/configuracao` | Remove a configuração e todas as vagas (bloqueado se houver vaga ocupada) |
 
-Corpo esperado (POST/PUT):
+Corpo esperado (POST/PUT/PATCH — no PATCH todos os campos são opcionais):
 ```json
 {
   "area": 500.0,

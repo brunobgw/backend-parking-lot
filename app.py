@@ -3,7 +3,7 @@ from flask_openapi3 import OpenAPI, Info, Tag
 
 from model import Session, ConfiguracaoEstacionamento, Vaga
 from schemas import (
-    ConfiguracaoEstacionamentoSchema, apresenta_configuracao,
+    ConfiguracaoEstacionamentoSchema, ConfiguracaoEstacionamentoPatchSchema, apresenta_configuracao,
     VagaBuscaSchema, VagaOcupacaoSchema, apresenta_vaga, apresenta_vagas,
     ErrorSchema
 )
@@ -117,6 +117,61 @@ def update_configuracao(body: ConfiguracaoEstacionamentoSchema):
     configuracao.preco_hora = body.preco_hora
     session.commit()
     return apresenta_configuracao(configuracao), 200
+
+
+@app.patch('/configuracao', tags=[configuracao_tag],
+           responses={"404": ErrorSchema, "409": ErrorSchema})
+def patch_configuracao(body: ConfiguracaoEstacionamentoPatchSchema):
+    """Atualiza parcialmente a configuração cadastrada do estacionamento
+
+    Apenas os campos informados no corpo da requisição são alterados (por
+    exemplo, ajustar só o preço por hora). Ao informar a capacidade, as vagas
+    numeradas são ajustadas automaticamente, seguindo a mesma regra do PUT.
+    """
+    session = Session()
+    configuracao = session.query(ConfiguracaoEstacionamento).first()
+    if not configuracao:
+        error_msg = "Configuração do estacionamento ainda não foi cadastrada :/"
+        return {"message": error_msg}, 404
+
+    if body.capacidade is not None:
+        erro_msg = sincroniza_vagas(session, body.capacidade)
+        if erro_msg:
+            session.rollback()
+            return {"message": erro_msg}, 409
+        configuracao.capacidade = body.capacidade
+
+    if body.area is not None:
+        configuracao.area = body.area
+    if body.preco_hora is not None:
+        configuracao.preco_hora = body.preco_hora
+
+    session.commit()
+    return apresenta_configuracao(configuracao), 200
+
+
+@app.delete('/configuracao', tags=[configuracao_tag],
+            responses={"404": ErrorSchema, "409": ErrorSchema})
+def delete_configuracao():
+    """Remove a configuração cadastrada do estacionamento e todas as suas vagas
+
+    Não é permitido remover a configuração enquanto houver vagas ocupadas.
+    """
+    session = Session()
+    configuracao = session.query(ConfiguracaoEstacionamento).first()
+    if not configuracao:
+        error_msg = "Configuração do estacionamento ainda não foi cadastrada :/"
+        return {"message": error_msg}, 404
+
+    ocupadas = session.query(Vaga).filter(Vaga.status == "ocupada").count()
+    if ocupadas > 0:
+        error_msg = f"Não é possível remover a configuração: existem {ocupadas} vaga(s) ocupada(s) :/"
+        return {"message": error_msg}, 409
+
+    session.query(Vaga).delete()
+    session.delete(configuracao)
+    session.commit()
+    return {"message": "Configuração do estacionamento removida com sucesso"}, 200
 
 
 @app.get('/vagas', tags=[vaga_tag])

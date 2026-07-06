@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -8,6 +10,16 @@ class ConfiguracaoEstacionamentoSchema(BaseModel):
     area: float = Field(..., description="Área total do estacionamento, em metros quadrados", examples=[500.0])
     capacidade: int = Field(..., description="Quantidade máxima de carros que o estacionamento comporta", examples=[50])
     preco_hora: float = Field(..., description="Valor cobrado por hora de permanência", examples=[5.0])
+
+
+class ConfiguracaoEstacionamentoPatchSchema(BaseModel):
+    """ Define os campos que podem ser parcialmente atualizados na
+        configuração do estacionamento. Todos os campos são opcionais e
+        apenas os informados são alterados.
+    """
+    area: Optional[float] = Field(None, description="Área total do estacionamento, em metros quadrados", examples=[500.0])
+    capacidade: Optional[int] = Field(None, description="Quantidade máxima de carros que o estacionamento comporta", examples=[50])
+    preco_hora: Optional[float] = Field(None, description="Valor cobrado por hora de permanência", examples=[5.0])
 
 
 def apresenta_configuracao(configuracao) -> dict:
