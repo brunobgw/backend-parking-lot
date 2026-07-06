@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from model.base import Base
 from model.configuracao import ConfiguracaoEstacionamento
 from model.vaga import Vaga
+from model.pagamento import Pagamento
 
 
 # url de acesso ao banco (essa é uma url de acesso ao sqlite local)

@@ -1,11 +1,14 @@
-from flask import render_template
+import math
+from datetime import datetime, time
+
 from flask_cors import CORS
 from flask_openapi3 import OpenAPI, Info, Tag
 
-from model import Session, ConfiguracaoEstacionamento, Vaga
+from model import Session, ConfiguracaoEstacionamento, Vaga, Pagamento
 from schemas import (
     ConfiguracaoEstacionamentoSchema, ConfiguracaoEstacionamentoPatchSchema, apresenta_configuracao,
     VagaBuscaSchema, VagaOcupacaoSchema, apresenta_vaga, apresenta_vagas,
+    PagamentoBuscaSchema, apresenta_pagamento, apresenta_pagamentos,
     ErrorSchema
 )
 
@@ -14,9 +17,9 @@ info = Info(title="API Estacionamento", version="1.0.0")
 app = OpenAPI(__name__, info=info)
 CORS(app)  # permite que o frontend (aberto via file:// ou outra porta) acesse a API
 
-home_tag = Tag(name="Documentação", description="Seleção de documentação: Swagger, Redoc ou RapiDoc")
 configuracao_tag = Tag(name="Configuração", description="Cadastro, visualização e atualização da configuração do estacionamento")
 vaga_tag = Tag(name="Vaga", description="Visualização, ocupação e liberação das vagas do estacionamento")
+pagamento_tag = Tag(name="Pagamento", description="Consulta dos pagamentos recebidos ao liberar vagas")
 
 
 def sincroniza_vagas(session, capacidade: int):
@@ -48,13 +51,6 @@ def sincroniza_vagas(session, capacidade: int):
         return None
 
     return None
-
-
-@app.get('/', tags=[home_tag])
-def home():
-    """Página inicial da aplicação
-    """
-    return render_template("home.html"), 200
 
 
 @app.get('/configuracao', tags=[configuracao_tag],
@@ -220,7 +216,11 @@ def ocupar_vaga(path: VagaBuscaSchema, body: VagaOcupacaoSchema):
 @app.put('/vagas/<numero>/liberar', tags=[vaga_tag],
          responses={"404": ErrorSchema, "409": ErrorSchema})
 def liberar_vaga(path: VagaBuscaSchema):
-    """Libera uma vaga ocupada
+    """Libera uma vaga ocupada e registra automaticamente o pagamento
+
+    O valor cobrado é calculado a partir do tempo de permanência (horas
+    arredondadas para cima, com mínimo de 1 hora) multiplicado pelo preço por
+    hora vigente na configuração do estacionamento.
     """
     session = Session()
     vaga = session.query(Vaga).filter(Vaga.numero == path.numero).first()
@@ -231,9 +231,31 @@ def liberar_vaga(path: VagaBuscaSchema):
         error_msg = "Vaga já está livre :/"
         return {"message": error_msg}, 409
 
+    configuracao = session.query(ConfiguracaoEstacionamento).first()
+    horas = max(1, math.ceil((datetime.now() - vaga.hora_entrada).total_seconds() / 3600))
+    pagamento = Pagamento(
+        numero_vaga=vaga.numero,
+        placa=vaga.placa,
+        valor=horas * configuracao.preco_hora
+    )
+    session.add(pagamento)
     vaga.liberar()
     session.commit()
-    return apresenta_vaga(vaga), 200
+    return apresenta_pagamento(pagamento), 200
+
+
+@app.get('/pagamentos', tags=[pagamento_tag])
+def get_pagamentos(query: PagamentoBuscaSchema):
+    """Lista os pagamentos recebidos, opcionalmente filtrando por data (AAAA-MM-DD)
+    """
+    session = Session()
+    consulta = session.query(Pagamento)
+    if query.data:
+        inicio = datetime.combine(query.data, time.min)
+        fim = datetime.combine(query.data, time.max)
+        consulta = consulta.filter(Pagamento.data_hora.between(inicio, fim))
+    pagamentos = consulta.order_by(Pagamento.data_hora).all()
+    return apresenta_pagamentos(pagamentos), 200
 
 
 if __name__ == '__main__':

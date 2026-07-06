@@ -51,8 +51,7 @@ automaticamente na primeira execução.
 
 ### 4. Acessar a aplicação
 
-Com o servidor rodando, abra [http://localhost:5000/](http://localhost:5000/)
-no navegador. A documentação interativa (Swagger) fica disponível em
+Com o servidor rodando, a documentação interativa (Swagger) fica disponível em
 [http://localhost:5000/openapi/swagger](http://localhost:5000/openapi/swagger).
 
 ---
@@ -79,12 +78,12 @@ Corpo esperado (POST/PUT/PATCH — no PATCH todos os campos são opcionais):
 
 ### Vagas
 
-| Método | Rota                     | Descrição                           |
-|--------|--------------------------|-------------------------------------|
-| GET    | `/vagas`                 | Lista todas as vagas                |
-| GET    | `/vagas/<numero>`        | Detalha uma vaga específica         |
-| PUT    | `/vagas/<numero>/ocupar` | Ocupa a vaga com a placa informada  |
-| PUT    | `/vagas/<numero>/liberar`| Libera a vaga                       |
+| Método | Rota                      | Descrição                                            |
+|--------|---------------------------|------------------------------------------------------|
+| GET    | `/vagas`                  | Lista todas as vagas                                 |
+| GET    | `/vagas/<numero>`         | Detalha uma vaga específica                          |
+| PUT    | `/vagas/<numero>/ocupar`  | Ocupa a vaga com a placa informada                   |
+| PUT    | `/vagas/<numero>/liberar` | Libera a vaga e registra o pagamento automaticamente |
 
 Corpo esperado (PUT `/vagas/<numero>/ocupar`):
 ```json
@@ -92,3 +91,17 @@ Corpo esperado (PUT `/vagas/<numero>/ocupar`):
   "placa": "ABC1D23"
 }
 ```
+
+Ao liberar uma vaga (`PUT /vagas/<numero>/liberar`), o pagamento é calculado e
+registrado automaticamente: o tempo de permanência é arredondado para cima em
+horas (mínimo de 1 hora) e multiplicado pelo `preco_hora` vigente na
+configuração. Não é necessário informar nada no corpo da requisição.
+
+### Pagamentos
+
+| Método | Rota          | Descrição                                                   |
+|--------|---------------|-------------------------------------------------------------|
+| GET    | `/pagamentos` | Lista os pagamentos, com filtro opcional `?data=AAAA-MM-DD` |
+
+Os pagamentos são criados automaticamente ao liberar uma vaga — não há rota
+para inseri-los manualmente.
