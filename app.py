@@ -1,4 +1,5 @@
 from flask import render_template
+from flask_cors import CORS
 from flask_openapi3 import OpenAPI, Info, Tag
 
 from model import Session, ConfiguracaoEstacionamento, Vaga
@@ -11,6 +12,7 @@ from schemas import (
 
 info = Info(title="API Estacionamento", version="1.0.0")
 app = OpenAPI(__name__, info=info)
+CORS(app)  # permite que o frontend (aberto via file:// ou outra porta) acesse a API
 
 home_tag = Tag(name="Documentação", description="Seleção de documentação: Swagger, Redoc ou RapiDoc")
 configuracao_tag = Tag(name="Configuração", description="Cadastro, visualização e atualização da configuração do estacionamento")
