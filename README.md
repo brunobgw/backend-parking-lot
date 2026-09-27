@@ -122,9 +122,20 @@ Corpo esperado (POST/PUT/PATCH — no PATCH todos os campos são opcionais):
 Corpo esperado (PUT `/vagas/<numero>/ocupar`):
 ```json
 {
-  "placa": "ABC1D23"
+  "placa": "ABC1D23",
+  "observacao": "Cliente aguardando revisão do veículo",
+  "cpf_cnpj": "33555921000170"
 }
 ```
+
+Os campos `observacao` e `cpf_cnpj` são opcionais. O `cpf_cnpj` deve conter
+somente números (11 dígitos para CPF ou 14 para CNPJ). Quando é informado um
+CNPJ, a razão social e os dados de contato (telefone e e-mail) da empresa são
+consultados automaticamente na API pública
+[publica.cnpj.ws](https://publica.cnpj.ws) e retornados junto com a vaga; para
+CPF, nenhuma consulta é realizada. Se o CNPJ não for encontrado ou o serviço
+de consulta estiver indisponível, a ocupação da vaga não é efetuada e um erro
+(`404` ou `502`, respectivamente) é retornado.
 
 Ao liberar uma vaga (`PUT /vagas/<numero>/liberar`), o pagamento é calculado e
 registrado automaticamente: o tempo de permanência é arredondado para cima em

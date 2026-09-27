@@ -4,6 +4,7 @@ from datetime import datetime, time
 from flask_cors import CORS
 from flask_openapi3 import OpenAPI, Info, Tag
 
+from cnpj_service import consulta_cnpj, CNPJNaoEncontradoError, CNPJConsultaIndisponivelError
 from model import Session, ConfiguracaoEstacionamento, Vaga, Pagamento
 from schemas import (
     ConfiguracaoEstacionamentoSchema, ConfiguracaoEstacionamentoPatchSchema, apresenta_configuracao,
@@ -195,9 +196,15 @@ def get_vaga(path: VagaBuscaSchema):
 
 
 @app.put('/vagas/<numero>/ocupar', tags=[vaga_tag],
-         responses={"404": ErrorSchema, "409": ErrorSchema})
+         responses={"404": ErrorSchema, "409": ErrorSchema, "502": ErrorSchema})
 def ocupar_vaga(path: VagaBuscaSchema, body: VagaOcupacaoSchema):
     """Ocupa uma vaga livre com a placa do veículo informado
+
+    Opcionalmente, é possível informar uma observação e o CPF/CNPJ do
+    responsável pelo veículo. Quando um CNPJ é informado, a razão social e os
+    dados de contato (telefone e e-mail) da empresa são consultados
+    automaticamente na API pública https://publica.cnpj.ws. Para CPF, nenhuma
+    consulta é realizada.
     """
     session = Session()
     vaga = session.query(Vaga).filter(Vaga.numero == path.numero).first()
@@ -208,7 +215,20 @@ def ocupar_vaga(path: VagaBuscaSchema, body: VagaOcupacaoSchema):
         error_msg = "Vaga já está ocupada :/"
         return {"message": error_msg}, 409
 
-    vaga.ocupar(body.placa)
+    razao_social = telefone = email = None
+    if body.cpf_cnpj and len(body.cpf_cnpj) == 14:
+        try:
+            dados_empresa = consulta_cnpj(body.cpf_cnpj)
+        except CNPJNaoEncontradoError as e:
+            return {"message": str(e)}, 404
+        except CNPJConsultaIndisponivelError as e:
+            return {"message": str(e)}, 502
+        razao_social = dados_empresa["razao_social"]
+        telefone = dados_empresa["telefone"]
+        email = dados_empresa["email"]
+
+    vaga.ocupar(placa=body.placa, observacao=body.observacao, cpf_cnpj=body.cpf_cnpj,
+                razao_social=razao_social, telefone=telefone, email=email)
     session.commit()
     return apresenta_vaga(vaga), 200
 
