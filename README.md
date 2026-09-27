@@ -55,6 +55,40 @@ Com o servidor rodando, a documentação interativa (Swagger) fica disponível e
 [http://localhost:5000/openapi/swagger](http://localhost:5000/openapi/swagger).
 
 ---
+## Como executar com Docker
+
+Alternativamente, é possível executar a aplicação em um container Docker, sem
+precisar instalar Python ou as dependências localmente.
+
+### 1. Construir a imagem
+
+Na raiz do projeto, execute:
+```
+docker build -t backend-parking-lot .
+```
+
+### 2. Executar o container
+
+```
+docker run -p 5000:5000 backend-parking-lot
+```
+
+O banco de dados SQLite (`database/db.sqlite3`) é criado automaticamente
+dentro do container na primeira execução. Caso queira persistir os dados
+entre reinicializações do container, monte a pasta `database` como volume:
+
+```
+docker run -p 5000:5000 -v "$(pwd)/database:/app/database" backend-parking-lot
+```
+
+> No Windows (PowerShell), substitua `$(pwd)` por `${PWD}`.
+
+### 3. Acessar a aplicação
+
+Com o container rodando, a documentação interativa (Swagger) fica disponível
+em [http://localhost:5000/openapi/swagger](http://localhost:5000/openapi/swagger).
+
+---
 ## Rotas disponíveis
 
 ### Configuração do estacionamento
