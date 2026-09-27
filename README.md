@@ -5,6 +5,15 @@ API para gerenciamento de um estacionamento: cadastro da configuração do local
 e liberação).
 
 ---
+## Arquitetura
+
+![Diagrama de arquitetura](system-design.png)
+
+O frontend consome a API REST do backend, que persiste os dados em um banco
+SQLite e, ao registrar a entrada de um veículo de uma empresa (CNPJ), consulta
+a API pública da [cnpj.ws](https://docs.cnpj.ws/) via HTTP.
+
+---
 ## Como executar
 
 Após clonar o repositório, acesse o diretório raiz do projeto pelo terminal
@@ -150,3 +159,64 @@ configuração. Não é necessário informar nada no corpo da requisição.
 
 Os pagamentos são criados automaticamente ao liberar uma vaga — não há rota
 para inseri-los manualmente.
+
+---
+## Integração externa: consulta de CNPJ
+
+Ao ocupar uma vaga (`PUT /vagas/<numero>/ocupar`) informando um CNPJ (14
+dígitos) no campo `cpf_cnpj`, o backend consulta automaticamente os dados
+cadastrais da empresa na API pública da **cnpj.ws** (documentação oficial em
+[docs.cnpj.ws](https://docs.cnpj.ws/)), usando o endpoint:
+
+```
+GET https://publica.cnpj.ws/cnpj/{cnpj}
+```
+
+Exemplo de chamada, para o CNPJ `33555921000170`:
+```
+GET https://publica.cnpj.ws/cnpj/33555921000170
+```
+
+Exemplo de retorno:
+```json
+{
+  "cnpj_raiz": "33555921",
+  "razao_social": "FACULDADES CATOLICAS",
+  "capital_social": "0.00",
+  "porte": { "id": "05", "descricao": "Demais" },
+  "natureza_juridica": { "id": "3999", "descricao": "Associação Privada" },
+  "estabelecimento": {
+    "cnpj": "33555921000170",
+    "tipo": "Matriz",
+    "nome_fantasia": "PUC RIO",
+    "situacao_cadastral": "Ativa",
+    "data_situacao_cadastral": "2001-04-28",
+    "data_inicio_atividade": "1966-09-28",
+    "tipo_logradouro": "RUA",
+    "logradouro": "MARQUES DE SAO VICENTE",
+    "numero": "225",
+    "bairro": "GAVEA",
+    "cep": "22451900",
+    "ddd1": "21",
+    "telefone1": "35271045",
+    "email": "nfe@puc-rio.br",
+    "atividade_principal": {
+      "id": "8532500",
+      "descricao": "Educação superior - graduação e pós-graduação"
+    },
+    "estado": { "id": 19, "nome": "Rio de Janeiro", "sigla": "RJ" },
+    "cidade": { "id": 3243, "nome": "Rio de Janeiro" }
+  }
+}
+```
+*(retorno resumido; a API também traz o quadro societário (`socios`) e outros
+campos que não são utilizados por este projeto)*
+
+Do retorno acima, o backend (`cnpj_service.py`) extrai apenas:
+- `razao_social` → razão social da empresa
+- `estabelecimento.ddd1` + `estabelecimento.telefone1` → telefone de contato
+- `estabelecimento.email` → e-mail de contato
+
+Esses três campos são gravados na vaga e retornados junto com ela. Caso o
+CNPJ não seja encontrado ou o serviço esteja indisponível, a ocupação da vaga
+é abortada (ver seção [Vagas](#vagas)).
